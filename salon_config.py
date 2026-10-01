@@ -8,7 +8,7 @@ SALON = {
     "phone": "+998 90 123 45 67",
     "telegram": "@your_salon",
     "work_hours": "10:00 – 20:00",
-    "services": {
+    "masters": {\n        "master_1": {"ru": "Анна", "uz": "Anna"},\n        "master_2": {"ru": "Мария", "uz": "Maria"},\n    },\n    "services": {
         "haircut": {
             "ru": "Стрижка",
             "uz": "Soch olish",
