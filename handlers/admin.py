@@ -306,41 +306,103 @@ async def master_uz(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("master_services_"), F.from_user.id == ADMIN_ID)
-async def master_services(callback: CallbackQuery):
+async def master_services(callback: CallbackQuery, state: FSMContext):
     master_key = callback.data[len("master_services_"):]
     master = await get_master(master_key)
     if not master:
         await callback.answer("Мастер не найден", show_alert=True)
         return
     services = await get_services()
-    assigned = {s["key"] for s in await get_services_for_master(master_key)}
+    assigned = [s["key"] for s in await get_services_for_master(master_key)]
+    await state.update_data(master_services_key=master_key, pending_services=assigned)
     rows = []
-    for s in services:
-        mark = "☑️" if s["key"] in assigned else "⬜"
-        rows.append([InlineKeyboardButton(text=f"{mark} {s['name_ru']}", callback_data=f"svcmasters_{master_key}_{s['key']}")])
-    rows.append([InlineKeyboardButton(text="🔙 Назад", callback_data="catalog_masters")])
+    for srv in services:
+        mark = "☑️" if srv["key"] in assigned else "⬜"
+        rows.append([InlineKeyboardButton(
+            text=f"{mark} {srv['name_ru']}",
+            callback_data=f"svcmasters_{master_key}__{srv['key']}"
+        )])
+    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="master_services_save")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="master_services_back")])
     await callback.message.answer(
-        f"🔗 <b>Услуги мастера: {master['name_ru']}</b>\n\nНажимайте на услугу, чтобы назначить или снять её.",
+        f"🔗 <b>Услуги мастера: {master['name_ru']}</b>\n\n"
+        "Выберите услуги мастера, затем нажмите «💾 Сохранить».",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows)
     )
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("svcmasters_"), F.from_user.id == ADMIN_ID)
-async def toggle_master_service(callback: CallbackQuery):
+async def toggle_master_service(callback: CallbackQuery, state: FSMContext):
     payload = callback.data[len("svcmasters_"):]
-    master_key, service_key = payload.split("_", 1)
-    assigned = {s["key"] for s in await get_services_for_master(master_key)}
-    await set_master_service(service_key, master_key, service_key not in assigned)
+    if "__" not in payload:
+        await callback.answer("Ошибка выбора услуги", show_alert=True)
+        return
+    master_key, service_key = payload.split("__", 1)
+    data = await state.get_data()
+    if data.get("master_services_key") != master_key:
+        await callback.answer("Сессия настройки устарела. Откройте услуги мастера заново.", show_alert=True)
+        return
+    pending = set(data.get("pending_services", []))
+    if service_key in pending:
+        pending.remove(service_key)
+    else:
+        pending.add(service_key)
+    await state.update_data(pending_services=list(pending))
+
     services = await get_services()
-    assigned = {s["key"] for s in await get_services_for_master(master_key)}
     rows = []
-    for s in services:
-        mark = "☑️" if s["key"] in assigned else "⬜"
-        rows.append([InlineKeyboardButton(text=f"{mark} {s['name_ru']}", callback_data=f"svcmasters_{master_key}_{s['key']}")])
-    rows.append([InlineKeyboardButton(text="🔙 Назад", callback_data="catalog_masters")])
-    await callback.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
-    await callback.answer("Сохранено")
+    for srv in services:
+        mark = "☑️" if srv["key"] in pending else "⬜"
+        rows.append([InlineKeyboardButton(
+            text=f"{mark} {srv['name_ru']}",
+            callback_data=f"svcmasters_{master_key}__{srv['key']}"
+        )])
+    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="master_services_save")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="master_services_back")])
+    await callback.message.edit_reply_markup(
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "master_services_save", F.from_user.id == ADMIN_ID)
+async def save_master_services(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    master_key = data.get("master_services_key")
+    if not master_key:
+        await callback.answer("Настройка услуг не открыта", show_alert=True)
+        return
+
+    pending = set(data.get("pending_services", []))
+    services = await get_services()
+    current = {s["key"] for s in await get_services_for_master(master_key)}
+
+    for srv in services:
+        key = srv["key"]
+        if key in pending and key not in current:
+            await set_master_service(key, master_key, True)
+        elif key not in pending and key in current:
+            await set_master_service(key, master_key, False)
+
+    await state.clear()
+    await callback.message.edit_reply_markup(
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 К мастерам", callback_data="catalog_masters")]
+        ])
+    )
+    await callback.answer("✅ Услуги мастера сохранены", show_alert=True)
+
+
+@router.callback_query(F.data == "master_services_back", F.from_user.id == ADMIN_ID)
+async def master_services_back(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_reply_markup(
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 К мастерам", callback_data="catalog_masters")]
+        ])
+    )
+    await callback.answer("Изменения не сохранены")
 
 
 @router.callback_query(F.data == "schedule_list", F.from_user.id == ADMIN_ID)
