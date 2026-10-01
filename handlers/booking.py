@@ -149,6 +149,14 @@ async def process_phone(message: Message, state: FSMContext):
     date = data.get("date")
     time = data.get("time")
     master = data.get("master")
+    service_key = data.get("service_key")
+    duration = SALON["services"].get(service_key, {}).get("duration", 30)
+
+    # Final availability check immediately before saving the booking.
+    if not await is_slot_available(date, time, duration, master):
+        await message.answer(t(lang, "slot_taken"), reply_markup=main_menu(lang))
+        await state.set_state(None)
+        return
     
     await add_booking(
         user_id=message.from_user.id,
@@ -159,7 +167,8 @@ async def process_phone(message: Message, state: FSMContext):
         time=time,
         name=name,
         phone=phone,
-        lang=lang
+        lang=lang,
+        duration=duration
     )
     
     # Уведомление админу
