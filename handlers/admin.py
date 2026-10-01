@@ -358,8 +358,8 @@ async def toggle_master_service(callback: CallbackQuery, state: FSMContext):
             text=f"{mark} {srv['name_ru']}",
             callback_data=f"svcmasters_{master_key}__{srv['key']}"
         )])
-    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="admin_master_services_save")])
-    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="admin_master_services_back")])
+    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data=f"admin_master_services_save_{master_key}")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data=f"admin_master_services_back_{master_key}")])
     await callback.message.edit_reply_markup(
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows)
     )
