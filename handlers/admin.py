@@ -322,8 +322,8 @@ async def master_services(callback: CallbackQuery, state: FSMContext):
             text=f"{mark} {srv['name_ru']}",
             callback_data=f"svcmasters_{master_key}__{srv['key']}"
         )])
-    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="admin_master_services_save")])
-    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="admin_master_services_back")])
+    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data=f"admin_master_services_save_{master_key}")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data=f"admin_master_services_back_{master_key}")])
     await callback.message.answer(
         f"🔗 <b>Услуги мастера: {master['name_ru']}</b>\n\n"
         "Выберите услуги мастера, затем нажмите «💾 Сохранить».",
@@ -366,15 +366,21 @@ async def toggle_master_service(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.callback_query(F.data == "admin_master_services_save", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data.startswith("admin_master_services_save_"), F.from_user.id == ADMIN_ID)
 async def save_master_services(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    master_key = data.get("master_services_key")
-    if not master_key:
-        await callback.answer("Настройка услуг не открыта", show_alert=True)
+    master_key = callback.data[len("admin_master_services_save_"):]
+    master = await get_master(master_key)
+    if not master:
+        await callback.answer("Мастер не найден. Откройте список мастеров заново.", show_alert=True)
         return
 
+    data = await state.get_data()
+    # Берём именно отложенный набор галочек из текущего экрана.
     pending = set(data.get("pending_services", []))
+    if data.get("master_services_key") != master_key:
+        await callback.answer("Сессия настройки устарела. Откройте услуги мастера заново.", show_alert=True)
+        return
+
     services = await get_services()
     current = {s["key"] for s in await get_services_for_master(master_key)}
 
@@ -394,7 +400,7 @@ async def save_master_services(callback: CallbackQuery, state: FSMContext):
     await callback.answer("✅ Услуги мастера сохранены", show_alert=True)
 
 
-@router.callback_query(F.data == "admin_master_services_back", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data.startswith("admin_master_services_back_"), F.from_user.id == ADMIN_ID)
 async def master_services_back(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_reply_markup(
