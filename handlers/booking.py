@@ -21,7 +21,7 @@ async def start_booking(message: Message, state: FSMContext):
     await message.answer(t(lang, "choose_service"), reply_markup=await services_kb(lang))
 
 
-@router.callback_query(F.data.startswith("service_"))
+@router.callback_query(F.data.startswith("service_") & ~F.data.startswith("service_edit_") & ~F.data.startswith("service_off_") & (F.data != "service_add"))
 async def process_service(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
