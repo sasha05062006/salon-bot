@@ -82,7 +82,10 @@ def cancel_kb(lang: str):
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=t(lang, "btn_cancel"))]],
         resize_keyboard=True
-    )\n\n\ndef phone_kb(lang: str):
+    )
+
+
+def phone_kb(lang: str):
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=t(lang, "btn_share_phone"), request_contact=True)],
