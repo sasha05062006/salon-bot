@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states import BookingStates
-from keyboards.inline import services_kb, dates_kb, times_kb, main_menu, cancel_kb, phone_kb
+from keyboards.inline import services_kb, masters_kb, dates_kb, times_kb, main_menu, cancel_kb, phone_kb
 from database import add_booking
 from config import ADMIN_ID
 from locales.texts import t
@@ -28,10 +28,28 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
     service_name = t(lang, "services")[service_key]
     
     await state.update_data(service=service_name, service_key=service_key)
-    await state.set_state(BookingStates.waiting_for_date)
+    await state.set_state(BookingStates.waiting_for_master)
     
     await callback.message.edit_text(
-        f"{t(lang, 'choose_service')}\n\n✅ {service_name}\n\n{t(lang, 'choose_date')}",
+        f"{t(lang, 'choose_service')}\n\n✅ {service_name}\n\n{t(lang, 'choose_master')}",
+        reply_markup=masters_kb(lang)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("master_"))
+async def process_master(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get("lang", "ru")
+    from salon_config import SALON
+
+    master_key = callback.data.split("_", 1)[1]
+    master = SALON["masters"][master_key][lang]
+    await state.update_data(master=master, master_key=master_key)
+    await state.set_state(BookingStates.waiting_for_date)
+
+    await callback.message.edit_text(
+        f"✅ {data.get('service')}\n👩‍🎨 {master}\n\n{t(lang, 'choose_date')}",
         reply_markup=dates_kb(lang)
     )
     await callback.answer()
@@ -109,11 +127,13 @@ async def process_phone(message: Message, state: FSMContext):
     service = data.get("service")
     date = data.get("date")
     time = data.get("time")
+    master = data.get("master")
     
     await add_booking(
         user_id=message.from_user.id,
         username=message.from_user.username or "",
         service=service,
+        master=master,
         date=date,
         time=time,
         name=name,
@@ -125,6 +145,7 @@ async def process_phone(message: Message, state: FSMContext):
     text_admin = (
         f"🆕 <b>Новая запись!</b>\n\n"
         f"Услуга: {service}\n"
+        f"Мастер: {master}\n"
         f"Дата: {date}\n"
         f"Время: {time}\n"
         f"Имя: {name}\n"
