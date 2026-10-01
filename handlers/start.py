@@ -59,4 +59,5 @@ async def show_address(message: Message, state: FSMContext):
 async def show_contacts(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    settings = await get_salon_settings()\n    await message.answer(t(lang, "contacts", phone=settings.get("phone", "—"), telegram=settings.get("telegram", "—")))
+    settings = await get_salon_settings()
+    await message.answer(t(lang, "contacts", phone=settings.get("phone", "—"), telegram=settings.get("telegram", "—")))
