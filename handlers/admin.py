@@ -2,6 +2,8 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from config import ADMIN_ID
+from states import AdminStates
+from aiogram.fsm.context import FSMContext
 from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, add_service, deactivate_service, add_master, deactivate_master
 
 router = Router()
@@ -13,7 +15,9 @@ def admin_kb():
          InlineKeyboardButton(text="📆 Завтра", callback_data="admin_tomorrow")],
         [InlineKeyboardButton(text="📋 Все записи", callback_data="admin_all")],
         [InlineKeyboardButton(text="💇 Услуги", callback_data="catalog_services"),
-         InlineKeyboardButton(text="👩‍🎨 Мастера", callback_data="catalog_masters")]
+         InlineKeyboardButton(text="👩‍🎨 Мастера", callback_data="catalog_masters")],
+        [InlineKeyboardButton(text="➕ Добавить услугу", callback_data="service_add"),
+         InlineKeyboardButton(text="➕ Добавить мастера", callback_data="master_add")]
     ])
 
 
@@ -148,3 +152,62 @@ async def master_off(callback: CallbackQuery):
     await deactivate_master(callback.data[len("master_off_"):])
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.answer("Мастер отключён")
+
+
+@router.callback_query(F.data == "service_add", F.from_user.id == ADMIN_ID)
+async def service_add_start(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStates.adding_service_ru)
+    await callback.message.answer("Введите название услуги на русском:")
+    await callback.answer()
+
+@router.message(AdminStates.adding_service_ru, F.from_user.id == ADMIN_ID)
+async def service_ru(message: Message, state: FSMContext):
+    await state.update_data(name_ru=message.text.strip())
+    await state.set_state(AdminStates.adding_service_uz)
+    await message.answer("Введите название услуги на узбекском:")
+
+@router.message(AdminStates.adding_service_uz, F.from_user.id == ADMIN_ID)
+async def service_uz(message: Message, state: FSMContext):
+    await state.update_data(name_uz=message.text.strip())
+    await state.set_state(AdminStates.adding_service_price)
+    await message.answer("Введите цену (например: 120 000 сум):")
+
+@router.message(AdminStates.adding_service_price, F.from_user.id == ADMIN_ID)
+async def service_price(message: Message, state: FSMContext):
+    await state.update_data(price=message.text.strip())
+    await state.set_state(AdminStates.adding_service_duration)
+    await message.answer("Введите длительность в минутах (например: 60):")
+
+@router.message(AdminStates.adding_service_duration, F.from_user.id == ADMIN_ID)
+async def service_duration(message: Message, state: FSMContext):
+    try:
+        duration=int(message.text.strip())
+        if duration < 5 or duration > 600: raise ValueError
+    except ValueError:
+        await message.answer("Введите число минут от 5 до 600.")
+        return
+    data=await state.get_data()
+    key="service_"+str(abs(hash(data["name_ru"])) % 1000000)
+    await add_service(key,data["name_ru"],data["name_uz"],data["price"],duration)
+    await state.clear()
+    await message.answer("✅ Услуга добавлена.", reply_markup=admin_kb())
+
+@router.callback_query(F.data == "master_add", F.from_user.id == ADMIN_ID)
+async def master_add_start(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStates.adding_master_ru)
+    await callback.message.answer("Введите имя мастера на русском:")
+    await callback.answer()
+
+@router.message(AdminStates.adding_master_ru, F.from_user.id == ADMIN_ID)
+async def master_ru(message: Message, state: FSMContext):
+    await state.update_data(name_ru=message.text.strip())
+    await state.set_state(AdminStates.adding_master_uz)
+    await message.answer("Введите имя мастера на узбекском:")
+
+@router.message(AdminStates.adding_master_uz, F.from_user.id == ADMIN_ID)
+async def master_uz(message: Message, state: FSMContext):
+    data=await state.get_data()
+    key="master_"+str(abs(hash(data["name_ru"])) % 1000000)
+    await add_master(key,data["name_ru"],message.text.strip())
+    await state.clear()
+    await message.answer("✅ Мастер добавлен. Расписание настроим следующим шагом.", reply_markup=admin_kb())
