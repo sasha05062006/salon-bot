@@ -168,3 +168,16 @@ async def get_master_schedule(master_key):
     async with aiosqlite.connect(DB_NAME) as db:
         rows=await (await db.execute("SELECT weekday,start_time,end_time FROM master_schedule WHERE master_key=? ORDER BY weekday",(master_key,))).fetchall()
         return rows
+
+
+async def get_service(key):
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        row = await (await db.execute("SELECT * FROM services WHERE key=? AND active=1", (key,))).fetchone()
+        return dict(row) if row else None
+
+async def get_master(key):
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        row = await (await db.execute("SELECT * FROM masters WHERE key=? AND active=1", (key,))).fetchone()
+        return dict(row) if row else None
