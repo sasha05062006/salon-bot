@@ -322,8 +322,8 @@ async def master_services(callback: CallbackQuery, state: FSMContext):
             text=f"{mark} {srv['name_ru']}",
             callback_data=f"svcmasters_{master_key}__{srv['key']}"
         )])
-    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="master_services_save")])
-    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="master_services_back")])
+    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="admin_master_services_save")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="admin_master_services_back")])
     await callback.message.answer(
         f"🔗 <b>Услуги мастера: {master['name_ru']}</b>\n\n"
         "Выберите услуги мастера, затем нажмите «💾 Сохранить».",
@@ -358,15 +358,15 @@ async def toggle_master_service(callback: CallbackQuery, state: FSMContext):
             text=f"{mark} {srv['name_ru']}",
             callback_data=f"svcmasters_{master_key}__{srv['key']}"
         )])
-    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="master_services_save")])
-    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="master_services_back")])
+    rows.append([InlineKeyboardButton(text="💾 Сохранить", callback_data="admin_master_services_save")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад без сохранения", callback_data="admin_master_services_back")])
     await callback.message.edit_reply_markup(
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows)
     )
     await callback.answer()
 
 
-@router.callback_query(F.data == "master_services_save", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "admin_master_services_save", F.from_user.id == ADMIN_ID)
 async def save_master_services(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     master_key = data.get("master_services_key")
@@ -394,7 +394,7 @@ async def save_master_services(callback: CallbackQuery, state: FSMContext):
     await callback.answer("✅ Услуги мастера сохранены", show_alert=True)
 
 
-@router.callback_query(F.data == "master_services_back", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "admin_master_services_back", F.from_user.id == ADMIN_ID)
 async def master_services_back(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_reply_markup(
