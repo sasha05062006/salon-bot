@@ -160,6 +160,7 @@ async def process_phone(message: Message, state: FSMContext):
     service_key = data.get("service_key")
     service_row = await get_service(service_key)
     duration = service_row["duration"] if service_row else 30
+    duration = service_row["duration"] if service_row else 30
 
     # Final availability check immediately before saving the booking.
     if not await is_slot_available(date, time, duration, master):
