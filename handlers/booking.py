@@ -158,7 +158,8 @@ async def process_phone(message: Message, state: FSMContext):
     time = data.get("time")
     master = data.get("master")
     service_key = data.get("service_key")
-    service_row = await get_service(service_key)\n    duration = service_row["duration"] if service_row else 30
+    service_row = await get_service(service_key)
+    duration = service_row["duration"] if service_row else 30
 
     # Final availability check immediately before saving the booking.
     if not await is_slot_available(date, time, duration, master):
@@ -179,7 +180,12 @@ async def process_phone(message: Message, state: FSMContext):
         duration=duration
     )
     
-    if not saved:\n        await message.answer(t(lang, "slot_taken"), reply_markup=main_menu(lang))\n        await state.set_state(None)\n        return\n    \n    # Уведомление админу
+    if not saved:
+        await message.answer(t(lang, "slot_taken"), reply_markup=main_menu(lang))
+        await state.set_state(None)
+        return
+    
+    # Уведомление админу
     text_admin = (
         f"🆕 <b>Новая запись!</b>\n\n"
         f"Услуга: {service}\n"
