@@ -12,6 +12,7 @@ async def init_db():
                 user_id INTEGER,
                 username TEXT,
                 service TEXT,
+                master TEXT,
                 date TEXT,
                 time TEXT,
                 name TEXT,
@@ -24,14 +25,14 @@ async def init_db():
         await db.commit()
 
 
-async def add_booking(user_id: int, username: str, service: str, date: str, time: str, name: str, phone: str, lang: str = "ru"):
+async def add_booking(user_id: int, username: str, service: str, master: str, date: str, time: str, name: str, phone: str, lang: str = "ru"):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
             """
-            INSERT INTO bookings (user_id, username, service, date, time, name, phone, lang, created_at)
+            INSERT INTO bookings (user_id, username, service, master, date, time, name, phone, lang, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id, username, service, date, time, name, phone, lang, datetime.now().isoformat())
+            (user_id, username, service, master, date, time, name, phone, lang, datetime.now().isoformat())
         )
         await db.commit()
 
