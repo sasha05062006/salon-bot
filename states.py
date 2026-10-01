@@ -26,3 +26,6 @@ class AdminStates(StatesGroup):
     setup_phone = State()
     setup_instagram = State()
     setup_telegram = State()
+    bot_name = State()
+    bot_description = State()
+    bot_photo = State()
