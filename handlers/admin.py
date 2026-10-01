@@ -4,7 +4,8 @@ from aiogram.filters import Command
 from config import ADMIN_ID
 from states import AdminStates
 from aiogram.fsm.context import FSMContext
-from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, add_service, deactivate_service, add_master, deactivate_master
+from datetime import datetime
+from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, add_service, deactivate_service, add_master, deactivate_master, set_master_day, get_master_schedule
 
 router = Router()
 
@@ -17,7 +18,8 @@ def admin_kb():
         [InlineKeyboardButton(text="💇 Услуги", callback_data="catalog_services"),
          InlineKeyboardButton(text="👩‍🎨 Мастера", callback_data="catalog_masters")],
         [InlineKeyboardButton(text="➕ Добавить услугу", callback_data="service_add"),
-         InlineKeyboardButton(text="➕ Добавить мастера", callback_data="master_add")]
+         InlineKeyboardButton(text="➕ Добавить мастера", callback_data="master_add")],
+        [InlineKeyboardButton(text="🕐 Расписание", callback_data="schedule_list")]
     ])
 
 
@@ -211,3 +213,48 @@ async def master_uz(message: Message, state: FSMContext):
     await add_master(key,data["name_ru"],message.text.strip())
     await state.clear()
     await message.answer("✅ Мастер добавлен. Расписание настроим следующим шагом.", reply_markup=admin_kb())
+
+
+@router.callback_query(F.data == "schedule_list", F.from_user.id == ADMIN_ID)
+async def schedule_list(callback: CallbackQuery):
+    masters = await get_masters()
+    for m in masters:
+        await callback.message.answer(
+            f"🕐 Расписание: <b>{m['name_ru']}</b>",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Пн", callback_data=f"sched_{m['key']}_0"),
+                 InlineKeyboardButton(text="Вт", callback_data=f"sched_{m['key']}_1"),
+                 InlineKeyboardButton(text="Ср", callback_data=f"sched_{m['key']}_2"),
+                 InlineKeyboardButton(text="Чт", callback_data=f"sched_{m['key']}_3")],
+                [InlineKeyboardButton(text="Пт", callback_data=f"sched_{m['key']}_4"),
+                 InlineKeyboardButton(text="Сб", callback_data=f"sched_{m['key']}_5"),
+                 InlineKeyboardButton(text="Вс", callback_data=f"sched_{m['key']}_6")]
+            ])
+        )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("sched_"), F.from_user.id == ADMIN_ID)
+async def schedule_day(callback: CallbackQuery, state: FSMContext):
+    _, key, weekday = callback.data.split("_", 2)
+    await state.update_data(schedule_master=key, schedule_weekday=int(weekday))
+    await callback.message.answer("Введите часы работы, например <b>10:00-20:00</b>. Для выходного напишите <b>выходной</b>.")
+    await state.set_state(AdminStates.adding_master_confirm)
+    await callback.answer()
+
+@router.message(AdminStates.adding_master_confirm, F.from_user.id == ADMIN_ID)
+async def schedule_save(message: Message, state: FSMContext):
+    value=message.text.strip().lower()
+    data=await state.get_data()
+    if value in ("выходной","выходной день","off"):
+        await set_master_day(data["schedule_master"], data["schedule_weekday"], None, None)
+    else:
+        try:
+            start,end=[x.strip() for x in value.split("-",1)]
+            datetime.strptime(start,"%H:%M")
+            datetime.strptime(end,"%H:%M")
+        except Exception:
+            await message.answer("Формат: 10:00-20:00 или «выходной».")
+            return
+        await set_master_day(data["schedule_master"], data["schedule_weekday"], start, end)
+    await state.clear()
+    await message.answer("✅ Расписание сохранено.", reply_markup=admin_kb())
