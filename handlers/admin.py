@@ -1,5 +1,8 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from io import BytesIO
+import aiohttp
+import json
 from aiogram.filters import Command
 from config import ADMIN_ID, SETUP_COMMAND
 from states import AdminStates
@@ -20,7 +23,8 @@ def admin_kb():
         [InlineKeyboardButton(text="➕ Добавить услугу", callback_data="service_add"),
          InlineKeyboardButton(text="➕ Добавить мастера", callback_data="master_add")],
         [InlineKeyboardButton(text="🕐 Расписание", callback_data="schedule_list")],
-        [InlineKeyboardButton(text="⚙️ Настройка салона", callback_data="salon_setup")]
+        [InlineKeyboardButton(text="⚙️ Настройка салона", callback_data="salon_setup")],
+        [InlineKeyboardButton(text="🤖 Настройки бота", callback_data="bot_settings")]
     ])
 
 
@@ -259,6 +263,152 @@ async def schedule_save(message: Message, state: FSMContext):
         await set_master_day(data["schedule_master"], data["schedule_weekday"], start, end)
     await state.clear()
     await message.answer("✅ Расписание сохранено.", reply_markup=admin_kb())
+
+
+def bot_settings_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ Изменить имя", callback_data="bot_name")],
+        [InlineKeyboardButton(text="📝 Изменить описание", callback_data="bot_description")],
+        [InlineKeyboardButton(text="🖼 Изменить фото", callback_data="bot_photo")],
+        [InlineKeyboardButton(text="🔗 Изменить username", callback_data="bot_username_info")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="bot_settings_back")]
+    ])
+
+
+async def show_bot_settings(message: Message):
+    me = await message.bot.get_me()
+    try:
+        short = await message.bot.get_my_short_description()
+        description = short.short_description or "—"
+    except Exception:
+        description = "—"
+    await message.answer(
+        "🤖 <b>Настройки бота</b>\n\n"
+        f"👤 Имя: <b>{me.full_name}</b>\n"
+        f"🔗 Username: @{me.username or '—'}\n"
+        f"📝 Описание: {description}",
+        reply_markup=bot_settings_kb()
+    )
+
+
+@router.message(Command("bot_settings"), F.from_user.id == ADMIN_ID)
+async def bot_settings_command(message: Message, state: FSMContext):
+    await state.clear()
+    await show_bot_settings(message)
+
+
+@router.callback_query(F.data == "bot_settings", F.from_user.id == ADMIN_ID)
+async def bot_settings_button(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await show_bot_settings(callback.message)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "bot_settings_back", F.from_user.id == ADMIN_ID)
+async def bot_settings_back(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text("⚙️ <b>Панель записей</b>", reply_markup=admin_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "bot_name", F.from_user.id == ADMIN_ID)
+async def bot_name_start(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStates.bot_name)
+    await callback.message.answer("✏️ Введите новое имя бота (до 64 символов):")
+    await callback.answer()
+
+
+@router.message(AdminStates.bot_name, F.from_user.id == ADMIN_ID)
+async def bot_name_save(message: Message, state: FSMContext):
+    name = (message.text or "").strip()
+    if not name or len(name) > 64:
+        await message.answer("Имя должно быть от 1 до 64 символов.")
+        return
+    await message.bot.set_my_name(name=name)
+    await state.clear()
+    await message.answer("✅ Имя бота изменено.")
+    await show_bot_settings(message)
+
+
+@router.callback_query(F.data == "bot_description", F.from_user.id == ADMIN_ID)
+async def bot_description_start(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStates.bot_description)
+    await callback.message.answer("📝 Введите описание бота (до 120 символов). Оно будет отображаться в профиле под аватаркой:")
+    await callback.answer()
+
+
+@router.message(AdminStates.bot_description, F.from_user.id == ADMIN_ID)
+async def bot_description_save(message: Message, state: FSMContext):
+    description = (message.text or "").strip()
+    if len(description) > 120:
+        await message.answer("Описание профиля должно быть не длиннее 120 символов.")
+        return
+    await message.bot.set_my_short_description(short_description=description)
+    await message.bot.set_my_description(description=description)
+    await state.clear()
+    await message.answer("✅ Описание бота изменено.")
+    await show_bot_settings(message)
+
+
+@router.callback_query(F.data == "bot_username_info", F.from_user.id == ADMIN_ID)
+async def bot_username_info(callback: CallbackQuery):
+    await callback.answer(
+        "Username бота нельзя менять через Bot API. Его нужно изменить через @BotFather. "
+        "После изменения здесь автоматически будет показан новый username.",
+        show_alert=True
+    )
+
+
+async def set_bot_profile_photo(bot, image_bytes: bytes, filename: str = "avatar.jpg"):
+    # Telegram Bot API requires an uploaded InputProfilePhoto; using the raw API here
+    # keeps compatibility with the project's currently pinned aiogram version.
+    from config import BOT_TOKEN
+    form = aiohttp.FormData()
+    form.add_field(
+        "photo",
+        json.dumps({"type": "static", "photo": "attach://profile_photo"}),
+        content_type="application/json",
+    )
+    form.add_field(
+        "profile_photo",
+        image_bytes,
+        filename=filename,
+        content_type="image/jpeg",
+    )
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMyProfilePhoto"
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, data=form, timeout=30) as response:
+            data = await response.json()
+            if not data.get("ok"):
+                raise RuntimeError(data.get("description", "Telegram API error"))
+
+
+@router.callback_query(F.data == "bot_photo", F.from_user.id == ADMIN_ID)
+async def bot_photo_start(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStates.bot_photo)
+    await callback.message.answer("🖼 Отправьте новую фотографию бота одним сообщением:")
+    await callback.answer()
+
+
+@router.message(AdminStates.bot_photo, F.photo, F.from_user.id == ADMIN_ID)
+async def bot_photo_save(message: Message, state: FSMContext):
+    try:
+        photo = message.photo[-1]
+        file = await message.bot.get_file(photo.file_id)
+        buffer = BytesIO()
+        await message.bot.download_file(file.file_path, destination=buffer)
+        await set_bot_profile_photo(message.bot, buffer.getvalue(), "avatar.jpg")
+        await state.clear()
+        await message.answer("✅ Фото бота изменено.")
+        await show_bot_settings(message)
+    except Exception as exc:
+        await message.answer(f"❌ Не удалось изменить фото: {exc}")
+
+
+@router.message(AdminStates.bot_photo, F.from_user.id == ADMIN_ID)
+async def bot_photo_wrong(message: Message):
+    await message.answer("Пожалуйста, отправьте именно фотографию.")
+
 
 
 def salon_setup_kb(settings):
