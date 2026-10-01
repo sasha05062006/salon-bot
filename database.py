@@ -45,6 +45,23 @@ async def get_all_bookings():
         return [dict(row) for row in rows]
 
 
+async def is_slot_available(date: str, start_time: str, duration_minutes: int, master: str) -> bool:
+    start = datetime.strptime(start_time, "%H:%M")
+    end = start + __import__("datetime").timedelta(minutes=duration_minutes)
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            "SELECT time FROM bookings WHERE date = ? AND master = ? AND status != 'cancelled'",
+            (date, master)
+        )
+        rows = await cursor.fetchall()
+        for (existing_time,) in rows:
+            existing_start = datetime.strptime(existing_time, "%H:%M")
+            existing_end = existing_start + __import__("datetime").timedelta(minutes=30)
+            if start < existing_end and existing_start < end:
+                return False
+    return True
+
+
 async def is_slot_booked(date: str, time: str, master: str) -> bool:
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute(
