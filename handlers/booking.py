@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states import BookingStates
 from keyboards.inline import services_kb, masters_kb, dates_kb, times_kb, main_menu, cancel_kb, phone_kb
-from database import add_booking, is_slot_available
+from database import add_booking, is_slot_available, get_service, get_master, get_master_schedule
 from config import ADMIN_ID
 from locales.texts import t
 from salon_config import SALON
@@ -18,7 +18,7 @@ async def start_booking(message: Message, state: FSMContext):
     lang = data.get("lang", "ru")
     
     await state.set_state(BookingStates.waiting_for_service)
-    await message.answer(t(lang, "choose_service"), reply_markup=services_kb(lang))
+    await message.answer(t(lang, "choose_service"), reply_markup=await services_kb(lang))
 
 
 @router.callback_query(F.data.startswith("service_"))
@@ -27,7 +27,11 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
     lang = data.get("lang", "ru")
     
     service_key = callback.data.split("_")[1]
-    service_name = t(lang, "services")[service_key]
+    service_row = await get_service(service_key)
+    if not service_row:
+        await callback.answer("Услуга недоступна", show_alert=True)
+        return
+    service_name = service_row["name_ru"] if lang == "ru" else service_row["name_uz"]
     
     await state.update_data(service=service_name, service_key=service_key)
     await state.set_state(BookingStates.waiting_for_master)
@@ -43,10 +47,12 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
 async def process_master(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    from salon_config import SALON
-
     master_key = callback.data.split("_", 1)[1]
-    master = SALON["masters"][master_key][lang]
+    master_row = await get_master(master_key)
+    if not master_row:
+        await callback.answer("Мастер недоступен", show_alert=True)
+        return
+    master = master_row["name_ru"] if lang == "ru" else master_row["name_uz"]
     await state.update_data(master=master, master_key=master_key)
     await state.set_state(BookingStates.waiting_for_date)
 
@@ -64,7 +70,8 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
     
     date = callback.data.split("_")[1]
     master_key = data.get("master_key")
-    schedule = SALON.get("master_schedule", {}).get(master_key, {})
+    schedule_rows = await get_master_schedule(master_key)
+    schedule = {weekday: [[start, end]] for weekday, start, end in schedule_rows}
     parsed = datetime.strptime(date, "%d.%m")
     year = datetime.now().year
     selected_date = parsed.replace(year=year)
@@ -77,7 +84,8 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
         while cur < finish:
             slot = cur.strftime("%H:%M")
             service_key = data.get("service_key")
-            duration = SALON["services"].get(service_key, {}).get("duration", 30)
+            service_row = await get_service(service_key)
+    duration = service_row["duration"] if service_row else 30
             if cur + timedelta(minutes=duration) <= finish and await is_slot_available(date, slot, duration, data.get("master")):
                 available.append(slot)
             cur += timedelta(minutes=30)
@@ -210,7 +218,7 @@ async def back_to_services(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
     await state.set_state(BookingStates.waiting_for_service)
-    await callback.message.edit_text(t(lang, "choose_service"), reply_markup=services_kb(lang))
+    await callback.message.edit_text(t(lang, "choose_service"), reply_markup=await services_kb(lang))
     await callback.answer()
 
 
