@@ -9,3 +9,14 @@ class BookingStates(StatesGroup):
     waiting_for_time = State()
     waiting_for_name = State()
     waiting_for_phone = State()
+
+
+class AdminStates(StatesGroup):
+    adding_service_ru = State()
+    adding_service_uz = State()
+    adding_service_price = State()
+    adding_service_duration = State()
+    adding_service_confirm = State()
+    adding_master_ru = State()
+    adding_master_uz = State()
+    adding_master_confirm = State()
