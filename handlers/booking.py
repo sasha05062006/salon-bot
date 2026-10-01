@@ -47,7 +47,7 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("master_"))
+@router.callback_query(F.data.startswith("master_") & ~F.data.startswith("master_services_") & ~F.data.startswith("master_off_") & (F.data != "master_add"))
 async def process_master(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
