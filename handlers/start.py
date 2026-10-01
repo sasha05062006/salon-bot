@@ -38,7 +38,13 @@ async def set_language(callback: CallbackQuery, state: FSMContext):
 async def show_price(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    settings = await get_salon_settings()\n    services = await get_services()\n    lines = []\n    for s in services:\n        name = s["name_ru"] if lang == "ru" else s["name_uz"]\n        lines.append(f"• {name} — {s["price"]}")\n    await message.answer(t(lang, "price_list", salon_name=settings.get("name", "Ваш салон"), services="\\n".join(lines)))
+    settings = await get_salon_settings()
+    services = await get_services()
+    lines = []
+    for s in services:
+        name = s["name_ru"] if lang == "ru" else s["name_uz"]
+        lines.append(f"• {name} — {s['price']}")
+    await message.answer(t(lang, "price_list", salon_name=settings.get("name", "Ваш салон"), services="\n".join(lines)))
 
 
 @router.message(F.text.in_({"📍 Адрес", "📍 Manzil"}))
