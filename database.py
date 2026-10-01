@@ -181,3 +181,9 @@ async def get_master(key):
         db.row_factory = aiosqlite.Row
         row = await (await db.execute("SELECT * FROM masters WHERE key=? AND active=1", (key,))).fetchone()
         return dict(row) if row else None
+
+
+async def update_service(key, name_ru, name_uz, price, duration):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("UPDATE services SET name_ru=?, name_uz=?, price=?, duration=? WHERE key=?", (name_ru, name_uz, price, duration, key))
+        await db.commit()
