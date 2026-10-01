@@ -15,6 +15,7 @@ async def init_db():
                 master TEXT,
                 date TEXT,
                 time TEXT,
+                duration INTEGER DEFAULT 30,
                 name TEXT,
                 phone TEXT,
                 lang TEXT DEFAULT 'ru',
@@ -25,14 +26,14 @@ async def init_db():
         await db.commit()
 
 
-async def add_booking(user_id: int, username: str, service: str, master: str, date: str, time: str, name: str, phone: str, lang: str = "ru"):
+async def add_booking(user_id: int, username: str, service: str, master: str, date: str, time: str, name: str, phone: str, lang: str = "ru", duration: int = 30):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
             """
-            INSERT INTO bookings (user_id, username, service, master, date, time, name, phone, lang, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO bookings (user_id, username, service, master, date, time, duration, name, phone, lang, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id, username, service, master, date, time, name, phone, lang, datetime.now().isoformat())
+            (user_id, username, service, master, date, time, duration, name, phone, lang, datetime.now().isoformat())
         )
         await db.commit()
 
@@ -50,13 +51,13 @@ async def is_slot_available(date: str, start_time: str, duration_minutes: int, m
     end = start + __import__("datetime").timedelta(minutes=duration_minutes)
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute(
-            "SELECT time FROM bookings WHERE date = ? AND master = ? AND status != 'cancelled'",
+            "SELECT time, COALESCE(duration, 30) FROM bookings WHERE date = ? AND master = ? AND status != 'cancelled'",
             (date, master)
         )
         rows = await cursor.fetchall()
-        for (existing_time,) in rows:
+        for existing_time, existing_duration in rows:
             existing_start = datetime.strptime(existing_time, "%H:%M")
-            existing_end = existing_start + __import__("datetime").timedelta(minutes=30)
+            existing_end = existing_start + __import__("datetime").timedelta(minutes=existing_duration or 30)
             if start < existing_end and existing_start < end:
                 return False
     return True
