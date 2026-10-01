@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from keyboards.inline import language_kb, main_menu
 from locales.texts import t
 from states import BookingStates
+from database import get_salon_settings, get_services
 
 router = Router()
 
@@ -37,18 +38,18 @@ async def set_language(callback: CallbackQuery, state: FSMContext):
 async def show_price(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    await message.answer(t(lang, "price_list"))
+    settings = await get_salon_settings()\n    services = await get_services()\n    lines = []\n    for s in services:\n        name = s["name_ru"] if lang == "ru" else s["name_uz"]\n        lines.append(f"• {name} — {s["price"]}")\n    await message.answer(t(lang, "price_list", salon_name=settings.get("name", "Ваш салон"), services="\\n".join(lines)))
 
 
 @router.message(F.text.in_({"📍 Адрес", "📍 Manzil"}))
 async def show_address(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    await message.answer(t(lang, "address"))
+    settings = await get_salon_settings()\n    await message.answer(t(lang, "address", address=settings.get("address", "—"), work_hours=settings.get("work_hours", "—")))
 
 
 @router.message(F.text.in_({"📞 Контакты", "📞 Kontaktlar"}))
 async def show_contacts(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    await message.answer(t(lang, "contacts"))
+    settings = await get_salon_settings()\n    await message.answer(t(lang, "contacts", phone=settings.get("phone", "—"), telegram=settings.get("telegram", "—")))
