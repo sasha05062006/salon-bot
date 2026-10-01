@@ -51,7 +51,8 @@ async def show_price(message: Message, state: FSMContext):
 async def show_address(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    settings = await get_salon_settings()\n    await message.answer(t(lang, "address", address=settings.get("address", "—"), work_hours=settings.get("work_hours", "—")))
+    settings = await get_salon_settings()
+    await message.answer(t(lang, "address", address=settings.get("address", "—"), work_hours=settings.get("work_hours", "—")))
 
 
 @router.message(F.text.in_({"📞 Контакты", "📞 Kontaktlar"}))
