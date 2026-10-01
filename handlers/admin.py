@@ -106,3 +106,45 @@ async def cancel_booking(callback: CallbackQuery):
     except Exception:
         pass
     await callback.answer("Отменено")
+
+
+@router.callback_query(F.data == "catalog_services", F.from_user.id == ADMIN_ID)
+async def catalog_services(callback: CallbackQuery):
+    services = await get_services()
+    if not services:
+        await callback.message.answer("Услуг пока нет.")
+    for s in services:
+        await callback.message.answer(
+            f"💇 <b>{s['name_ru']}</b> / {s['name_uz']}\n"
+            f"💰 {s['price']} • ⏱ {s['duration']} мин.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="🗑 Отключить", callback_data=f"service_off_{s['key']}")
+            ]])
+        )
+    await callback.answer()
+
+@router.callback_query(F.data == "catalog_masters", F.from_user.id == ADMIN_ID)
+async def catalog_masters(callback: CallbackQuery):
+    masters = await get_masters()
+    if not masters:
+        await callback.message.answer("Мастеров пока нет.")
+    for m in masters:
+        await callback.message.answer(
+            f"👩‍🎨 <b>{m['name_ru']}</b> / {m['name_uz']}",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="🗑 Отключить", callback_data=f"master_off_{m['key']}")
+            ]])
+        )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("service_off_"), F.from_user.id == ADMIN_ID)
+async def service_off(callback: CallbackQuery):
+    await deactivate_service(callback.data[len("service_off_"):])
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.answer("Услуга отключена")
+
+@router.callback_query(F.data.startswith("master_off_"), F.from_user.id == ADMIN_ID)
+async def master_off(callback: CallbackQuery):
+    await deactivate_master(callback.data[len("master_off_"):])
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.answer("Мастер отключён")
