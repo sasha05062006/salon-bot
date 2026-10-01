@@ -25,6 +25,10 @@ async def init_db():
             key TEXT UNIQUE, name_ru TEXT NOT NULL, name_uz TEXT NOT NULL,
             active INTEGER NOT NULL DEFAULT 1
         )""")
+        await db.execute("""CREATE TABLE IF NOT EXISTS service_masters (
+            service_key TEXT NOT NULL, master_key TEXT NOT NULL,
+            PRIMARY KEY(service_key, master_key)
+        )""")
         await db.commit()
 
 
@@ -41,6 +45,12 @@ async def seed_catalog():
                 "INSERT OR IGNORE INTO masters (key,name_ru,name_uz) VALUES (?,?,?)",
                 (key, m["ru"], m["uz"])
             )
+        for service_key in SALON["services"]:
+            for master_key in SALON["masters"]:
+                await db.execute(
+                    "INSERT OR IGNORE INTO service_masters(service_key,master_key) VALUES(?,?)",
+                    (service_key, master_key)
+                )
         await db.commit()
 
 
@@ -186,4 +196,43 @@ async def get_master(key):
 async def update_service(key, name_ru, name_uz, price, duration):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("UPDATE services SET name_ru=?, name_uz=?, price=?, duration=? WHERE key=?", (name_ru, name_uz, price, duration, key))
+        await db.commit()
+
+
+async def get_masters_for_service(service_key):
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        rows = await (await db.execute(
+            """SELECT m.* FROM masters m
+               JOIN service_masters sm ON sm.master_key=m.key
+               WHERE sm.service_key=? AND m.active=1 ORDER BY m.id""",
+            (service_key,)
+        )).fetchall()
+        return [dict(r) for r in rows]
+
+
+async def get_services_for_master(master_key):
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        rows = await (await db.execute(
+            """SELECT s.* FROM services s
+               JOIN service_masters sm ON sm.service_key=s.key
+               WHERE sm.master_key=? AND s.active=1 ORDER BY s.id""",
+            (master_key,)
+        )).fetchall()
+        return [dict(r) for r in rows]
+
+
+async def set_master_service(service_key, master_key, enabled):
+    async with aiosqlite.connect(DB_NAME) as db:
+        if enabled:
+            await db.execute(
+                "INSERT OR IGNORE INTO service_masters(service_key,master_key) VALUES(?,?)",
+                (service_key, master_key)
+            )
+        else:
+            await db.execute(
+                "DELETE FROM service_masters WHERE service_key=? AND master_key=?",
+                (service_key, master_key)
+            )
         await db.commit()
