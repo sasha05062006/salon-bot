@@ -38,7 +38,7 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
     
     await callback.message.edit_text(
         f"{t(lang, 'choose_service')}\n\n✅ {service_name}\n\n{t(lang, 'choose_master')}",
-        reply_markup=masters_kb(lang)
+        reply_markup=await masters_kb(lang)
     )
     await callback.answer()
 
@@ -78,14 +78,14 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
     weekday = selected_date.weekday()
     ranges = schedule.get(weekday, [])
     available = []
+    service_key = data.get("service_key")
+    service_row = await get_service(service_key)
+    duration = service_row["duration"] if service_row else 30
     for start, end in ranges:
         cur = datetime.strptime(start, "%H:%M")
         finish = datetime.strptime(end, "%H:%M")
         while cur < finish:
             slot = cur.strftime("%H:%M")
-            service_key = data.get("service_key")
-            service_row = await get_service(service_key)
-    duration = service_row["duration"] if service_row else 30
             if cur + timedelta(minutes=duration) <= finish and await is_slot_available(date, slot, duration, data.get("master")):
                 available.append(slot)
             cur += timedelta(minutes=30)
@@ -158,7 +158,7 @@ async def process_phone(message: Message, state: FSMContext):
     time = data.get("time")
     master = data.get("master")
     service_key = data.get("service_key")
-    duration = SALON["services"].get(service_key, {}).get("duration", 30)
+    service_row = await get_service(service_key)\n    duration = service_row["duration"] if service_row else 30
 
     # Final availability check immediately before saving the booking.
     if not await is_slot_available(date, time, duration, master):
@@ -179,7 +179,7 @@ async def process_phone(message: Message, state: FSMContext):
         duration=duration
     )
     
-    # Уведомление админу
+    if not saved:\n        await message.answer(t(lang, "slot_taken"), reply_markup=main_menu(lang))\n        await state.set_state(None)\n        return\n    \n    # Уведомление админу
     text_admin = (
         f"🆕 <b>Новая запись!</b>\n\n"
         f"Услуга: {service}\n"
