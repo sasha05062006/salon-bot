@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states import BookingStates
-from keyboards.inline import services_kb, dates_kb, times_kb, main_menu, cancel_kb
+from keyboards.inline import services_kb, dates_kb, times_kb, main_menu, cancel_kb, phone_kb
 from database import add_booking
 from config import ADMIN_ID
 from locales.texts import t
@@ -81,7 +81,7 @@ async def process_name(message: Message, state: FSMContext):
     
     await state.update_data(name=message.text)
     await state.set_state(BookingStates.waiting_for_phone)
-    await message.answer(t(lang, "enter_phone"))
+    await message.answer(t(lang, "enter_phone"), reply_markup=phone_kb(lang))
 
 
 @router.message(BookingStates.waiting_for_phone)
@@ -94,7 +94,17 @@ async def process_phone(message: Message, state: FSMContext):
         await message.answer(t(lang, "booking_cancelled"), reply_markup=main_menu(lang))
         return
     
-    phone = message.text
+    if message.contact:
+        if message.contact.user_id and message.contact.user_id != message.from_user.id:
+            await message.answer(t(lang, "phone_must_be_self"), reply_markup=phone_kb(lang))
+            return
+        phone = message.contact.phone_number
+    else:
+        phone = (message.text or "").strip()
+        if not phone:
+            await message.answer(t(lang, "phone_invalid"), reply_markup=phone_kb(lang))
+            return
+
     name = data.get("name")
     service = data.get("service")
     date = data.get("date")
