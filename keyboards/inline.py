@@ -38,17 +38,14 @@ async def services_kb(lang: str):
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-async def masters_kb(lang: str):
-    from database import get_masters
-    masters = await get_masters()
+async def masters_kb(lang: str, service_key: str):
+    from database import get_masters_for_service
+    masters = await get_masters_for_service(service_key)
     buttons = []
     for master in masters:
         key = master["key"]
         name = master["name_ru"] if lang == "ru" else master["name_uz"]
-        buttons.append([InlineKeyboardButton(
-            text=name,
-            callback_data=f"master_{key}"
-        )])
+        buttons.append([InlineKeyboardButton(text=name, callback_data=f"master_{key}")])
     buttons.append([InlineKeyboardButton(text=t(lang, "btn_back"), callback_data="back_to_services")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
