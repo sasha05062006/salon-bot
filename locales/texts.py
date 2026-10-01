@@ -1,6 +1,9 @@
+from salon_config import SALON
+
+
 TEXTS = {
     "ru": {
-        "welcome": "👋 Добро пожаловать!\n\nЯ бот для записи в салон красоты.\nВыберите язык / Tilni tanlang:",
+        "welcome": "👋 Добро пожаловать в <b>{salon_name}</b>!\n\n{description}\n\nВыберите язык / Tilni tanlang:",
         "choose_lang": "Выберите язык:",
         "main_menu": "Главное меню:",
         "btn_book": "📅 Записаться",
@@ -8,7 +11,10 @@ TEXTS = {
         "btn_address": "📍 Адрес",
         "btn_contacts": "📞 Контакты",
         "btn_back": "« Назад",
-        "btn_cancel": "❌ Отмена",\n        "btn_share_phone": "📱 Отправить номер телефона",\n        "phone_invalid": "Пожалуйста, отправьте номер телефона кнопкой ниже или введите его вручную.",\n        "phone_must_be_self": "Пожалуйста, отправьте свой номер телефона.",
+        "btn_cancel": "❌ Отмена",
+        "btn_share_phone": "📱 Отправить номер телефона",
+        "phone_invalid": "Пожалуйста, отправьте номер телефона кнопкой ниже или введите его вручную.",
+        "phone_must_be_self": "Пожалуйста, отправьте свой номер телефона.",
         "choose_service": "Выберите услугу:",
         "choose_date": "Выберите дату:",
         "choose_time": "Выберите время:",
@@ -16,18 +22,12 @@ TEXTS = {
         "enter_phone": "Введите номер телефона:",
         "booking_success": "✅ Запись успешно создана!\n\nУслуга: <b>{service}</b>\nДата: {date}\nВремя: {time}\nИмя: {name}\nТелефон: {phone}\n\nМы свяжемся с вами для подтверждения.",
         "booking_cancelled": "Запись отменена.",
-        "price_list": "<b>Прайс-лист:</b>\n\n• Стрижка — 80 000 сум\n• Маникюр — 120 000 сум\n• Окрашивание — 250 000 сум\n• Укладка — 100 000 сум",
-        "address": "📍 Адрес: г. Ташкент, ул. Примерная, 15\n\nРежим работы: 10:00 – 20:00",
-        "contacts": "📞 Телефон: +998 90 123 45 67\nTelegram: @your_salon",
-        "services": {
-            "haircut": "Стрижка",
-            "manicure": "Маникюр",
-            "coloring": "Окрашивание",
-            "styling": "Укладка"
-        }
+        "price_list": "<b>Прайс-лист {salon_name}:</b>\n\n{services}",
+        "address": "📍 <b>Адрес:</b> {address}\n\n🕐 <b>Режим работы:</b> {work_hours}",
+        "contacts": "📞 <b>Телефон:</b> {phone}\nTelegram: {telegram}",
     },
     "uz": {
-        "welcome": "👋 Xush kelibsiz!\n\nMen go‘zallik saloniga yozilish botiman.\nTilni tanlang / Выберите язык:",
+        "welcome": "👋 <b>{salon_name}</b> saloniga xush kelibsiz!\n\n{description}\n\nTilni tanlang / Выберите язык:",
         "choose_lang": "Tilni tanlang:",
         "main_menu": "Asosiy menyu:",
         "btn_book": "📅 Yozilish",
@@ -35,7 +35,10 @@ TEXTS = {
         "btn_address": "📍 Manzil",
         "btn_contacts": "📞 Kontaktlar",
         "btn_back": "« Orqaga",
-        "btn_cancel": "❌ Bekor qilish",\n        "btn_share_phone": "📱 Telefon raqamini yuborish",\n        "phone_invalid": "Iltimos, pastdagi tugma orqali telefon raqamingizni yuboring yoki uni qo‘lda kiriting.",\n        "phone_must_be_self": "Iltimos, o‘z telefon raqamingizni yuboring.",
+        "btn_cancel": "❌ Bekor qilish",
+        "btn_share_phone": "📱 Telefon raqamini yuborish",
+        "phone_invalid": "Iltimos, pastdagi tugma orqali telefon raqamingizni yuboring yoki uni qo‘lda kiriting.",
+        "phone_must_be_self": "Iltimos, o‘z telefon raqamingizni yuboring.",
         "choose_service": "Xizmatni tanlang:",
         "choose_date": "Sanani tanlang:",
         "choose_time": "Vaqtni tanlang:",
@@ -43,21 +46,46 @@ TEXTS = {
         "enter_phone": "Telefon raqamingizni kiriting:",
         "booking_success": "✅ Yozuv muvaffaqiyatli yaratildi!\n\nXizmat: <b>{service}</b>\nSana: {date}\nVaqt: {time}\nIsm: {name}\nTelefon: {phone}\n\nTasdiqlash uchun siz bilan bog‘lanamiz.",
         "booking_cancelled": "Yozuv bekor qilindi.",
-        "price_list": "<b>Narxlar ro‘yxati:</b>\n\n• Soch olish — 80 000 so‘m\n• Manikyur — 120 000 so‘m\n• Bo‘yash — 250 000 so‘m\n• Ukladka — 100 000 so‘m",
-        "address": "📍 Manzil: Toshkent sh., Namunaviy ko‘chasi, 15\n\nIsh vaqti: 10:00 – 20:00",
-        "contacts": "📞 Telefon: +998 90 123 45 67\nTelegram: @your_salon",
-        "services": {
-            "haircut": "Soch olish",
-            "manicure": "Manikyur",
-            "coloring": "Bo‘yash",
-            "styling": "Ukladka"
-        }
-    }
+        "price_list": "<b>{salon_name} narxlari:</b>\n\n{services}",
+        "address": "📍 <b>Manzil:</b> {address}\n\n🕐 <b>Ish vaqti:</b> {work_hours}",
+        "contacts": "📞 <b>Telefon:</b> {phone}\nTelegram: {telegram}",
+    },
 }
 
 
+def salon_text(lang: str, key: str, **kwargs):
+    lang = lang if lang in TEXTS else "ru"
+    values = {
+        "salon_name": SALON["name"],
+        "description": SALON["description"],
+        "address": SALON["address"],
+        "phone": SALON["phone"],
+        "telegram": SALON["telegram"],
+        "work_hours": SALON["work_hours"],
+        **kwargs,
+    }
+    return TEXTS[lang].get(key, key).format(**values)
+
+
+def services_for(lang: str):
+    lang = lang if lang in TEXTS else "ru"
+    return {
+        key: service[lang]
+        for key, service in SALON["services"].items()
+    }
+
+
+def price_list_for(lang: str):
+    lines = []
+    for service in SALON["services"].values():
+        lines.append(f"• {service[lang]} — {service['price']}")
+    return "\n".join(lines)
+
+
+# Оставляем короткий t() для совместимости со старыми обработчиками.
 def t(lang: str, key: str, **kwargs):
-    text = TEXTS.get(lang, TEXTS["ru"]).get(key, key)
-    if kwargs:
-        return text.format(**kwargs)
-    return text
+    if key == "services":
+        return services_for(lang)
+    if key == "price_list":
+        kwargs["services"] = price_list_for(lang)
+    return salon_text(lang, key, **kwargs)
