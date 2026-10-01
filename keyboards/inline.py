@@ -28,13 +28,12 @@ def main_menu(lang: str):
 
 def services_kb(lang: str):
     services = t(lang, "services")
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=services["haircut"], callback_data="service_haircut")],
-        [InlineKeyboardButton(text=services["manicure"], callback_data="service_manicure")],
-        [InlineKeyboardButton(text=services["coloring"], callback_data="service_coloring")],
-        [InlineKeyboardButton(text=services["styling"], callback_data="service_styling")],
-        [InlineKeyboardButton(text=t(lang, "btn_back"), callback_data="back_to_menu")]
-    ])
+    buttons = [
+        [InlineKeyboardButton(text=name, callback_data=f"service_{key}")]
+        for key, name in services.items()
+    ]
+    buttons.append([InlineKeyboardButton(text=t(lang, "btn_back"), callback_data="back_to_menu")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def masters_kb(lang: str):
