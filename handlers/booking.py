@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states import BookingStates
 from keyboards.inline import services_kb, masters_kb, dates_kb, times_kb, main_menu, cancel_kb, phone_kb
-from database import add_booking, is_slot_available, get_service, get_master, get_master_schedule
+from database import add_booking, is_slot_available, get_service, get_master, get_master_schedule, get_masters_for_service
 from config import ADMIN_ID
 from locales.texts import t
 from salon_config import SALON
@@ -33,12 +33,16 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
         return
     service_name = service_row["name_ru"] if lang == "ru" else service_row["name_uz"]
     
+    available_masters = await get_masters_for_service(service_key)
+    if not available_masters:
+        await callback.answer("Для этой услуги пока нет назначенных мастеров", show_alert=True)
+        return
     await state.update_data(service=service_name, service_key=service_key)
     await state.set_state(BookingStates.waiting_for_master)
     
     await callback.message.edit_text(
         f"{t(lang, 'choose_service')}\n\n✅ {service_name}\n\n{t(lang, 'choose_master')}",
-        reply_markup=await masters_kb(lang)
+        reply_markup=await masters_kb(lang, service_key)
     )
     await callback.answer()
 
