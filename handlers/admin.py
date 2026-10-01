@@ -8,7 +8,7 @@ from config import ADMIN_ID, SETUP_COMMAND
 from states import AdminStates
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
-from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, add_service, deactivate_service, add_master, deactivate_master, set_master_day, get_master_schedule, get_salon_settings, set_salon_setting
+from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, get_service, add_service, update_service, deactivate_service, add_master, deactivate_master, set_master_day, get_master_schedule, get_salon_settings, set_salon_setting
 
 router = Router()
 
@@ -140,7 +140,7 @@ async def catalog_services(callback: CallbackQuery):
             f"💇 <b>{s['name_ru']}</b> / {s['name_uz']}\n"
             f"💰 {s['price']} • ⏱ {s['duration']} мин.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="🗑 Отключить", callback_data=f"service_off_{s['key']}")
+                InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"service_edit_{s['key']}"), InlineKeyboardButton(text="🗑 Отключить", callback_data=f"service_off_{s['key']}")
             ]])
         )
     await callback.answer()
@@ -158,6 +158,80 @@ async def catalog_masters(callback: CallbackQuery):
             ]])
         )
     await callback.answer()
+
+@router.callback_query(F.data.startswith("service_edit_"), F.from_user.id == ADMIN_ID)
+async def service_edit_start(callback: CallbackQuery, state: FSMContext):
+    key = callback.data[len("service_edit_"):]
+    service = await get_service(key)
+    if not service:
+        await callback.answer("Услуга не найдена", show_alert=True)
+        return
+    await state.update_data(edit_service_key=key)
+    await state.set_state(AdminStates.editing_service_ru)
+    await callback.message.answer(
+        f"✏️ Редактирование услуги\n\n"
+        f"🇷🇺 Текущее название: <b>{service['name_ru']}</b>\n"
+        "Введите новое название на русском:"
+    )
+    await callback.answer()
+
+
+@router.message(AdminStates.editing_service_ru, F.from_user.id == ADMIN_ID)
+async def service_edit_ru(message: Message, state: FSMContext):
+    await state.update_data(name_ru=message.text.strip())
+    await state.set_state(AdminStates.editing_service_uz)
+    await message.answer("Введите новое название на узбекском:")
+
+
+@router.message(AdminStates.editing_service_uz, F.from_user.id == ADMIN_ID)
+async def service_edit_uz(message: Message, state: FSMContext):
+    await state.update_data(name_uz=message.text.strip())
+    await state.set_state(AdminStates.editing_service_price)
+    await message.answer("Введите новую цену (например: 120 000 сум):")
+
+
+@router.message(AdminStates.editing_service_price, F.from_user.id == ADMIN_ID)
+async def service_edit_price(message: Message, state: FSMContext):
+    await state.update_data(price=message.text.strip())
+    await state.set_state(AdminStates.editing_service_duration)
+    await message.answer("Введите новую длительность в минутах (например: 60):")
+
+
+@router.message(AdminStates.editing_service_duration, F.from_user.id == ADMIN_ID)
+async def service_edit_duration(message: Message, state: FSMContext):
+    try:
+        duration = int(message.text.strip())
+        if duration < 5 or duration > 600:
+            raise ValueError
+    except ValueError:
+        await message.answer("Введите число минут от 5 до 600.")
+        return
+    data = await state.get_data()
+    await update_service(
+        data["edit_service_key"],
+        data["name_ru"],
+        data["name_uz"],
+        data["price"],
+        duration,
+    )
+    await state.clear()
+    await message.answer("✅ Услуга обновлена.", reply_markup=admin_kb())
+    await catalog_services_from_message(message)
+
+
+async def catalog_services_from_message(message: Message):
+    services = await get_services()
+    await message.answer("💇 <b>Услуги</b>")
+    for s in services:
+        await message.answer(
+            f"💇 <b>{s['name_ru']}</b> / {s['name_uz']}\n"
+            f"💰 {s['price']} • ⏱ {s['duration']} мин.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"service_edit_{s['key']}"),
+                InlineKeyboardButton(text="🗑 Отключить", callback_data=f"service_off_{s['key']}")
+            ]])
+        )
+
 
 @router.callback_query(F.data.startswith("service_off_"), F.from_user.id == ADMIN_ID)
 async def service_off(callback: CallbackQuery):
