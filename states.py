@@ -29,3 +29,7 @@ class AdminStates(StatesGroup):
     bot_name = State()
     bot_description = State()
     bot_photo = State()
+    editing_service_ru = State()
+    editing_service_uz = State()
+    editing_service_price = State()
+    editing_service_duration = State()
