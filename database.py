@@ -19,6 +19,7 @@ async def init_db():
             price TEXT NOT NULL, duration INTEGER NOT NULL DEFAULT 30,
             active INTEGER NOT NULL DEFAULT 1
         )""")
+        await db.execute("""CREATE TABLE IF NOT EXISTS master_schedule (master_key TEXT, weekday INTEGER, start_time TEXT, end_time TEXT, UNIQUE(master_key,weekday))""")
         await db.execute("""CREATE TABLE IF NOT EXISTS masters (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             key TEXT UNIQUE, name_ru TEXT NOT NULL, name_uz TEXT NOT NULL,
@@ -142,3 +143,16 @@ async def deactivate_master(key):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("UPDATE masters SET active=0 WHERE key=?", (key,))
         await db.commit()
+
+
+async def set_master_day(master_key, weekday, start_time, end_time):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("DELETE FROM master_schedule WHERE master_key=? AND weekday=?", (master_key, weekday))
+        if start_time and end_time:
+            await db.execute("INSERT INTO master_schedule(master_key,weekday,start_time,end_time) VALUES(?,?,?,?)", (master_key,weekday,start_time,end_time))
+        await db.commit()
+
+async def get_master_schedule(master_key):
+    async with aiosqlite.connect(DB_NAME) as db:
+        rows=await (await db.execute("SELECT weekday,start_time,end_time FROM master_schedule WHERE master_key=? ORDER BY weekday",(master_key,))).fetchall()
+        return rows
