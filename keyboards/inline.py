@@ -26,8 +26,10 @@ def main_menu(lang: str):
     )
 
 
-def services_kb(lang: str):
-    services = t(lang, "services")
+async def services_kb(lang: str):
+    from database import get_services
+    services_rows = await get_services()
+    services = {s["key"]: s["name_ru" if lang == "ru" else "name_uz"] for s in services_rows}
     buttons = [
         [InlineKeyboardButton(text=name, callback_data=f"service_{key}")]
         for key, name in services.items()
@@ -36,12 +38,15 @@ def services_kb(lang: str):
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def masters_kb(lang: str):
-    from salon_config import SALON
+async def masters_kb(lang: str):
+    from database import get_masters
+    masters = await get_masters()
     buttons = []
-    for key, master in SALON["masters"].items():
+    for master in masters:
+        key = master["key"]
+        name = master["name_ru"] if lang == "ru" else master["name_uz"]
         buttons.append([InlineKeyboardButton(
-            text=master[lang],
+            text=name,
             callback_data=f"master_{key}"
         )])
     buttons.append([InlineKeyboardButton(text=t(lang, "btn_back"), callback_data="back_to_services")])
