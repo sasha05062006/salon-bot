@@ -1,11 +1,11 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
-from config import ADMIN_ID
+from config import ADMIN_ID, SETUP_COMMAND
 from states import AdminStates
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
-from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, add_service, deactivate_service, add_master, deactivate_master, set_master_day, get_master_schedule
+from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, add_service, deactivate_service, add_master, deactivate_master, set_master_day, get_master_schedule, get_salon_settings, set_salon_setting
 
 router = Router()
 
@@ -258,3 +258,59 @@ async def schedule_save(message: Message, state: FSMContext):
         await set_master_day(data["schedule_master"], data["schedule_weekday"], start, end)
     await state.clear()
     await message.answer("✅ Расписание сохранено.", reply_markup=admin_kb())
+
+
+@router.message(F.text == SETUP_COMMAND)
+async def private_setup_start(message: Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("Команда недоступна.")
+        return
+    await state.set_state(AdminStates.setup_name)
+    await message.answer("🔐 Настройка салона. Введите название салона:")
+
+@router.message(AdminStates.setup_name, F.from_user.id == ADMIN_ID)
+async def setup_name(message: Message, state: FSMContext):
+    await set_salon_setting("name", message.text.strip())
+    await state.set_state(AdminStates.setup_address)
+    await message.answer("Введите адрес:")
+
+@router.message(AdminStates.setup_address, F.from_user.id == ADMIN_ID)
+async def setup_address(message: Message, state: FSMContext):
+    await set_salon_setting("address", message.text.strip())
+    await state.set_state(AdminStates.setup_phone)
+    await message.answer("Введите телефон:")
+
+@router.message(AdminStates.setup_phone, F.from_user.id == ADMIN_ID)
+async def setup_phone(message: Message, state: FSMContext):
+    await set_salon_setting("phone", message.text.strip())
+    await state.set_state(AdminStates.setup_instagram)
+    await message.answer("Введите Instagram:")
+
+@router.message(AdminStates.setup_instagram, F.from_user.id == ADMIN_ID)
+async def setup_instagram(message: Message, state: FSMContext):
+    await set_salon_setting("instagram", message.text.strip())
+    await state.set_state(AdminStates.setup_telegram)
+    await message.answer("Введите Telegram:")
+
+@router.message(AdminStates.setup_telegram, F.from_user.id == ADMIN_ID)
+async def setup_telegram(message: Message, state: FSMContext):
+    await set_salon_setting("telegram", message.text.strip())
+    await state.set_state(AdminStates.setup_currency)
+    await message.answer("Введите валюту (например UZS):")
+
+@router.message(AdminStates.setup_currency, F.from_user.id == ADMIN_ID)
+async def setup_currency(message: Message, state: FSMContext):
+    await set_salon_setting("currency", message.text.strip())
+    await state.set_state(AdminStates.setup_timezone)
+    await message.answer("Введите часовой пояс, например Asia/Tashkent:")
+
+@router.message(AdminStates.setup_timezone, F.from_user.id == ADMIN_ID)
+async def setup_timezone(message: Message, state: FSMContext):
+    await set_salon_setting("timezone", message.text.strip())
+    await state.clear()
+    settings=await get_salon_settings()
+    await message.answer(
+        "✅ <b>Настройки салона сохранены.</b>\n\n"+
+        "\n".join(f"<b>{k}</b>: {v}" for k,v in settings.items()),
+        reply_markup=admin_kb()
+    )
