@@ -37,6 +37,18 @@ def services_kb(lang: str):
     ])
 
 
+def masters_kb(lang: str):
+    from salon_config import SALON
+    buttons = []
+    for key, master in SALON["masters"].items():
+        buttons.append([InlineKeyboardButton(
+            text=master[lang],
+            callback_data=f"master_{key}"
+        )])
+    buttons.append([InlineKeyboardButton(text=t(lang, "btn_back"), callback_data="back_to_services")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 def dates_kb(lang: str):
     buttons = []
     today = datetime.now()
