@@ -3,9 +3,11 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states import BookingStates
 from keyboards.inline import services_kb, masters_kb, dates_kb, times_kb, main_menu, cancel_kb, phone_kb
-from database import add_booking
+from database import add_booking, is_slot_booked
 from config import ADMIN_ID
 from locales.texts import t
+from salon_config import SALON
+from datetime import datetime, timedelta
 
 router = Router()
 
@@ -61,12 +63,29 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
     lang = data.get("lang", "ru")
     
     date = callback.data.split("_")[1]
+    master_key = data.get("master_key")
+    schedule = SALON.get("master_schedule", {}).get(master_key, {})
+    parsed = datetime.strptime(date, "%d.%m")
+    year = datetime.now().year
+    selected_date = parsed.replace(year=year)
+    weekday = selected_date.weekday()
+    ranges = schedule.get(weekday, [])
+    available = []
+    for start, end in ranges:
+        cur = datetime.strptime(start, "%H:%M")
+        finish = datetime.strptime(end, "%H:%M")
+        while cur < finish:
+            slot = cur.strftime("%H:%M")
+            if not await is_slot_booked(date, slot, data.get("master")):
+                available.append(slot)
+            cur += timedelta(minutes=30)
+
     await state.update_data(date=date)
     await state.set_state(BookingStates.waiting_for_time)
     
     await callback.message.edit_text(
-        f"✅ {data.get('service')}\n📅 {date}\n\n{t(lang, 'choose_time')}",
-        reply_markup=times_kb(lang)
+        f"✅ {data.get('service')}\n👩‍🎨 {data.get('master')}\n📅 {date}\n\n{t(lang, 'choose_time')}",
+        reply_markup=times_kb(lang, available)
     )
     await callback.answer()
 
