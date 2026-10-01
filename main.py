@@ -6,7 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from config import BOT_TOKEN
-from database import init_db
+from database import init_db, seed_catalog
 from handlers import start, booking, admin
 
 
@@ -14,6 +14,7 @@ async def main():
     logging.basicConfig(level=logging.INFO)
 
     await init_db()
+    await seed_catalog()
 
     bot = Bot(
         token=BOT_TOKEN,
