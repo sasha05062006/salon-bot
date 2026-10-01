@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from config import ADMIN_ID
-from database import get_all_bookings, update_booking_status, get_booking
+from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, add_service, deactivate_service, add_master, deactivate_master
 
 router = Router()
 
@@ -11,7 +11,9 @@ def admin_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📅 Сегодня", callback_data="admin_today"),
          InlineKeyboardButton(text="📆 Завтра", callback_data="admin_tomorrow")],
-        [InlineKeyboardButton(text="📋 Все записи", callback_data="admin_all")]
+        [InlineKeyboardButton(text="📋 Все записи", callback_data="admin_all")],
+        [InlineKeyboardButton(text="💇 Услуги", callback_data="catalog_services"),
+         InlineKeyboardButton(text="👩‍🎨 Мастера", callback_data="catalog_masters")]
     ])
 
 
