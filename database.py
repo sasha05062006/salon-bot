@@ -43,3 +43,12 @@ async def get_all_bookings():
         cursor = await db.execute("SELECT * FROM bookings ORDER BY id DESC")
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
+
+
+async def is_slot_booked(date: str, time: str, master: str) -> bool:
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            "SELECT 1 FROM bookings WHERE date = ? AND time = ? AND master = ? AND status != 'cancelled' LIMIT 1",
+            (date, time, master)
+        )
+        return await cursor.fetchone() is not None
