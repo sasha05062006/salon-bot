@@ -24,7 +24,8 @@ def admin_kb():
          InlineKeyboardButton(text="➕ Добавить мастера", callback_data="master_add")],
         [InlineKeyboardButton(text="🕐 Расписание", callback_data="schedule_list")],
         [InlineKeyboardButton(text="⚙️ Настройка салона", callback_data="salon_setup")],
-        [InlineKeyboardButton(text="🤖 Настройки бота", callback_data="bot_settings")]
+        [InlineKeyboardButton(text="🤖 Настройки бота", callback_data="bot_settings")],
+        [InlineKeyboardButton(text="🏠 В главное меню", callback_data="admin_exit")]
     ])
 
 
@@ -47,6 +48,16 @@ def format_booking(b):
         f"📱 {b['phone']}\n"
         f"{status}"
     )
+
+
+@router.callback_query(F.data == "admin_exit", F.from_user.id == ADMIN_ID)
+async def admin_exit(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text(
+        "🏠 <b>Главное меню</b>",
+        reply_markup=None
+    )
+    await callback.answer("Вы вышли из панели записей")
 
 
 @router.message(Command("bookings"), F.from_user.id == ADMIN_ID)
