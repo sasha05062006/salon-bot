@@ -19,7 +19,8 @@ def admin_kb():
          InlineKeyboardButton(text="👩‍🎨 Мастера", callback_data="catalog_masters")],
         [InlineKeyboardButton(text="➕ Добавить услугу", callback_data="service_add"),
          InlineKeyboardButton(text="➕ Добавить мастера", callback_data="master_add")],
-        [InlineKeyboardButton(text="🕐 Расписание", callback_data="schedule_list")]
+        [InlineKeyboardButton(text="🕐 Расписание", callback_data="schedule_list")],
+        [InlineKeyboardButton(text="⚙️ Настройка салона", callback_data="salon_setup")]
     ])
 
 
@@ -289,16 +290,27 @@ async def show_salon_setup(message: Message):
     )
 
 
-@router.message(F.text == SETUP_COMMAND)
-async def private_setup_start(message: Message, state: FSMContext):
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("Команда недоступна.")
-        return
-
+async def open_salon_setup(message: Message, state: FSMContext):
     await state.clear()
     await set_salon_setting("currency", "UZS")
     await set_salon_setting("timezone", "Asia/Tashkent")
     await show_salon_setup(message)
+
+
+@router.message(Command("salon_setup"), F.from_user.id == ADMIN_ID)
+async def private_setup_start(message: Message, state: FSMContext):
+    await open_salon_setup(message, state)
+
+
+@router.message(F.text == SETUP_COMMAND, F.from_user.id == ADMIN_ID)
+async def private_setup_start_legacy(message: Message, state: FSMContext):
+    await open_salon_setup(message, state)
+
+
+@router.callback_query(F.data == "salon_setup", F.from_user.id == ADMIN_ID)
+async def salon_setup_button(callback: CallbackQuery, state: FSMContext):
+    await open_salon_setup(callback.message, state)
+    await callback.answer()
 
 
 @router.callback_query(F.data == "setup_name", F.from_user.id == ADMIN_ID)
