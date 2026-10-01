@@ -121,3 +121,24 @@ async def get_masters():
         db.row_factory = aiosqlite.Row
         rows = await (await db.execute("SELECT * FROM masters WHERE active=1 ORDER BY id")).fetchall()
         return [dict(r) for r in rows]
+
+
+async def add_service(key, name_ru, name_uz, price, duration):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT INTO services(key,name_ru,name_uz,price,duration) VALUES(?,?,?,?,?)", (key,name_ru,name_uz,price,duration))
+        await db.commit()
+
+async def deactivate_service(key):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("UPDATE services SET active=0 WHERE key=?", (key,))
+        await db.commit()
+
+async def add_master(key, name_ru, name_uz):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT INTO masters(key,name_ru,name_uz) VALUES(?,?,?)", (key,name_ru,name_uz))
+        await db.commit()
+
+async def deactivate_master(key):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("UPDATE masters SET active=0 WHERE key=?", (key,))
+        await db.commit()
