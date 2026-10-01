@@ -8,7 +8,7 @@ from config import ADMIN_ID, SETUP_COMMAND
 from states import AdminStates
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
-from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, get_service, add_service, update_service, deactivate_service, add_master, deactivate_master, set_master_day, get_master_schedule, get_salon_settings, set_salon_setting
+from database import get_all_bookings, update_booking_status, get_booking, get_services, get_masters, get_masters_for_service, get_services_for_master, set_master_service, get_service, add_service, update_service, deactivate_service, add_master, deactivate_master, set_master_day, get_master_schedule, get_salon_settings, set_salon_setting
 
 router = Router()
 
@@ -154,7 +154,7 @@ async def catalog_masters(callback: CallbackQuery):
         await callback.message.answer(
             f"👩‍🎨 <b>{m['name_ru']}</b> / {m['name_uz']}",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="🗑 Отключить", callback_data=f"master_off_{m['key']}")
+                InlineKeyboardButton(text="💇 Услуги", callback_data=f"master_services_{m['key']}"), InlineKeyboardButton(text="🗑 Отключить", callback_data=f"master_off_{m['key']}")
             ]])
         )
     await callback.answer()
@@ -303,6 +303,44 @@ async def master_uz(message: Message, state: FSMContext):
     await add_master(key,data["name_ru"],message.text.strip())
     await state.clear()
     await message.answer("✅ Мастер добавлен. Расписание настроим следующим шагом.", reply_markup=admin_kb())
+
+
+@router.callback_query(F.data.startswith("master_services_"), F.from_user.id == ADMIN_ID)
+async def master_services(callback: CallbackQuery):
+    master_key = callback.data[len("master_services_"):]
+    master = await get_master(master_key)
+    if not master:
+        await callback.answer("Мастер не найден", show_alert=True)
+        return
+    services = await get_services()
+    assigned = {s["key"] for s in await get_services_for_master(master_key)}
+    rows = []
+    for s in services:
+        mark = "☑️" if s["key"] in assigned else "⬜"
+        rows.append([InlineKeyboardButton(text=f"{mark} {s['name_ru']}", callback_data=f"svcmasters_{master_key}_{s['key']}")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад", callback_data="catalog_masters")])
+    await callback.message.answer(
+        f"🔗 <b>Услуги мастера: {master['name_ru']}</b>\n\nНажимайте на услугу, чтобы назначить или снять её.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("svcmasters_"), F.from_user.id == ADMIN_ID)
+async def toggle_master_service(callback: CallbackQuery):
+    payload = callback.data[len("svcmasters_"):]
+    master_key, service_key = payload.split("_", 1)
+    assigned = {s["key"] for s in await get_services_for_master(master_key)}
+    await set_master_service(service_key, master_key, service_key not in assigned)
+    services = await get_services()
+    assigned = {s["key"] for s in await get_services_for_master(master_key)}
+    rows = []
+    for s in services:
+        mark = "☑️" if s["key"] in assigned else "⬜"
+        rows.append([InlineKeyboardButton(text=f"{mark} {s['name_ru']}", callback_data=f"svcmasters_{master_key}_{s['key']}")])
+    rows.append([InlineKeyboardButton(text="🔙 Назад", callback_data="catalog_masters")])
+    await callback.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await callback.answer("Сохранено")
 
 
 @router.callback_query(F.data == "schedule_list", F.from_user.id == ADMIN_ID)
