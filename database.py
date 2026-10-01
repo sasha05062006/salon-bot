@@ -110,6 +110,18 @@ async def is_slot_booked(date: str, time: str, master: str) -> bool:
     return not await is_slot_available(date, time, 30, master)
 
 
+async def get_salon_settings():
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("CREATE TABLE IF NOT EXISTS salon_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        rows=await (await db.execute("SELECT key,value FROM salon_settings")).fetchall()
+        return dict(rows)
+
+async def set_salon_setting(key, value):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("CREATE TABLE IF NOT EXISTS salon_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        await db.execute("INSERT INTO salon_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(key,str(value)))
+        await db.commit()
+
 async def get_services():
     async with aiosqlite.connect(DB_NAME) as db:
         db.row_factory = aiosqlite.Row
