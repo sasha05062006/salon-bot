@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states import BookingStates
 from keyboards.inline import services_kb, masters_kb, dates_kb, times_kb, main_menu, cancel_kb, phone_kb
-from database import add_booking, is_slot_booked
+from database import add_booking, is_slot_available
 from config import ADMIN_ID
 from locales.texts import t
 from salon_config import SALON
@@ -76,7 +76,9 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
         finish = datetime.strptime(end, "%H:%M")
         while cur < finish:
             slot = cur.strftime("%H:%M")
-            if not await is_slot_booked(date, slot, data.get("master")):
+            service_key = data.get("service_key")
+            duration = SALON["services"].get(service_key, {}).get("duration", 30)
+            if cur + timedelta(minutes=duration) <= finish and await is_slot_available(date, slot, duration, data.get("master")):
                 available.append(slot)
             cur += timedelta(minutes=30)
 
